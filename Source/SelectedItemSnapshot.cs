@@ -8,7 +8,10 @@ namespace SelectedItems
     {
         public readonly List<ThingDef> Items = new List<ThingDef>();
         public Vector2 ScrollPosition;
+        public bool Expanded;
+        public bool ForceFullList;
         public int Limit;
+        public int TotalSelectedCount;
         public int LastFrame;
     }
 }

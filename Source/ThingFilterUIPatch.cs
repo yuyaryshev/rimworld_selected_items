@@ -71,7 +71,7 @@ namespace SelectedItems
             if (selectedPanelHeight > 0f)
             {
                 Rect selectedRect = new Rect(rect.x + 3f, rect.y + 3f, rect.width - 16f - 6f, selectedPanelHeight);
-                SelectedItemsPanel.Draw(selectedRect, filter, snapshot);
+                SelectedItemsPanel.Draw(selectedRect, filter, parentFilter, forceHiddenDefs, node, snapshot);
                 rect.yMin = selectedRect.yMax + 3f;
             }
 

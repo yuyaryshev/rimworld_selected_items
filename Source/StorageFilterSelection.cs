@@ -21,25 +21,24 @@ namespace SelectedItems
             if (!Snapshots.TryGetValue(filter, out SelectedItemSnapshot snapshot) || frame - snapshot.LastFrame > ReopenFrameGap || snapshot.Limit != limit)
             {
                 Snapshots.Remove(filter);
-                if (allowedVisible.Count > limit)
-                {
-                    return null;
-                }
                 snapshot = new SelectedItemSnapshot
                 {
+                    Expanded = allowedVisible.Count <= limit,
                     Limit = limit,
+                    TotalSelectedCount = allowedVisible.Count,
                     LastFrame = frame
                 };
-                snapshot.Items.AddRange(allowedVisible.Take(maxItems));
+                RefreshItems(snapshot, allowedVisible, maxItems);
                 Snapshots.Add(filter, snapshot);
                 return snapshot;
             }
 
             snapshot.LastFrame = frame;
+            snapshot.TotalSelectedCount = allowedVisible.Count;
             snapshot.Items.RemoveAll(def => def == null || !Visible(def, parentFilter, forceHiddenDefs, displayRoot));
             foreach (ThingDef def in allowedVisible)
             {
-                if (snapshot.Items.Count >= maxItems)
+                if (!snapshot.ForceFullList && snapshot.Items.Count >= maxItems)
                 {
                     break;
                 }
@@ -50,6 +49,30 @@ namespace SelectedItems
             }
 
             return snapshot;
+        }
+
+        public static void Refresh(SelectedItemSnapshot snapshot, ThingFilter filter, ThingFilter parentFilter, IEnumerable<ThingDef> forceHiddenDefs, TreeNode_ThingCategory displayRoot)
+        {
+            int limit = SelectedItemsMod.Settings?.SelectedLimit ?? 5;
+            limit = Clamp(limit, 1, 1000);
+            int maxItems = limit * 2;
+            List<ThingDef> allowedVisible = AllowedVisibleDefs(filter, parentFilter, forceHiddenDefs, displayRoot);
+            snapshot.TotalSelectedCount = allowedVisible.Count;
+            snapshot.Limit = limit;
+            RefreshItems(snapshot, allowedVisible, maxItems);
+        }
+
+        private static void RefreshItems(SelectedItemSnapshot snapshot, List<ThingDef> allowedVisible, int maxItems)
+        {
+            snapshot.Items.Clear();
+            if (snapshot.ForceFullList)
+            {
+                snapshot.Items.AddRange(allowedVisible);
+            }
+            else
+            {
+                snapshot.Items.AddRange(allowedVisible.Take(maxItems));
+            }
         }
 
         private static List<ThingDef> AllowedVisibleDefs(ThingFilter filter, ThingFilter parentFilter, IEnumerable<ThingDef> forceHiddenDefs, TreeNode_ThingCategory displayRoot)
