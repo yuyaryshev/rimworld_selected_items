@@ -11,6 +11,7 @@ namespace SelectedItems
         public Vector2 ScrollPosition;
         public bool Expanded;
         public bool ForceFullList;
+        public bool NeedsRefreshOnFirstExpand;
         public bool ShowStoredItems;
         public int Limit;
         public int TotalSelectedCount;

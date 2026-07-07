@@ -66,9 +66,10 @@ namespace SelectedItems
             if (Widgets.ButtonImage(toggleRect, toggleTex))
             {
                 snapshot.Expanded = !snapshot.Expanded;
-                if (snapshot.Expanded && snapshot.TotalSelectedCount > snapshot.Limit)
+                if (snapshot.Expanded && (snapshot.TotalSelectedCount > snapshot.Limit || snapshot.NeedsRefreshOnFirstExpand))
                 {
                     snapshot.ForceFullList = true;
+                    snapshot.NeedsRefreshOnFirstExpand = false;
                     StorageFilterSelection.Refresh(snapshot, filter, parentFilter, forceHiddenDefs, displayRoot, storedDefs);
                 }
                 if (!snapshot.Expanded)

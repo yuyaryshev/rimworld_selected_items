@@ -25,6 +25,7 @@ namespace SelectedItems
                 snapshot = new SelectedItemSnapshot
                 {
                     Expanded = allowedVisible.Count <= limit,
+                    NeedsRefreshOnFirstExpand = allowedVisible.Count > limit,
                     ShowStoredItems = storedDefs.Count <= limit,
                     Limit = limit,
                     TotalSelectedCount = allowedVisible.Count,
