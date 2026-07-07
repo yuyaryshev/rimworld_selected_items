@@ -42,13 +42,13 @@ namespace SelectedItems
             Rect labelRect = new Rect(headerRect.x, headerRect.y + 2f, refreshRect.x - headerRect.x - 4f, 20f);
 
             Widgets.Label(labelRect, "Selected items: " + snapshot.TotalSelectedCount);
-            if (Widgets.ButtonImage(refreshRect, TexButton.Reload))
+            if (Widgets.ButtonImage(refreshRect, SelectedItemsTextures.Refresh))
             {
                 StorageFilterSelection.Refresh(snapshot, filter, parentFilter, forceHiddenDefs, displayRoot);
             }
             TooltipHandler.TipRegion(refreshRect, "Refresh selected item list");
 
-            Texture2D toggleTex = snapshot.Expanded ? TexButton.ReorderUp : TexButton.ReorderDown;
+            Texture2D toggleTex = snapshot.Expanded ? SelectedItemsTextures.ChevronUp : SelectedItemsTextures.ChevronDown;
             if (Widgets.ButtonImage(toggleRect, toggleTex))
             {
                 snapshot.Expanded = !snapshot.Expanded;
