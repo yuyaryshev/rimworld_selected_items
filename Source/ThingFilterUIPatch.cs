@@ -66,12 +66,13 @@ namespace SelectedItems
                 qualityConfigurable = parentFilter.allowedQualitiesConfigurable;
             }
 
-            SelectedItemSnapshot snapshot = StorageFilterSelection.SnapshotFor(filter, parentFilter, forceHiddenDefs, node);
+            List<ThingDef> storedDefs = StorageContents.StoredDefs(StorageTabContext.CurrentParent);
+            SelectedItemSnapshot snapshot = StorageFilterSelection.SnapshotFor(filter, parentFilter, forceHiddenDefs, node, storedDefs);
             float selectedPanelHeight = SelectedItemsPanel.HeightFor(snapshot);
             if (selectedPanelHeight > 0f)
             {
                 Rect selectedRect = new Rect(rect.x + 3f, rect.y + 3f, rect.width - 16f - 6f, selectedPanelHeight);
-                SelectedItemsPanel.Draw(selectedRect, filter, parentFilter, forceHiddenDefs, node, snapshot);
+                SelectedItemsPanel.Draw(selectedRect, filter, parentFilter, forceHiddenDefs, node, storedDefs, snapshot);
                 rect.yMin = selectedRect.yMax + 3f;
             }
 

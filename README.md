@@ -10,9 +10,11 @@ directly from the summary while the underlying tree stays synchronized.
 
 The header always shows the selected item count. The refresh button rebuilds the
 list from currently allowed items, removing rows that were unchecked in the
-summary. The expand/collapse button can show the list even when the selected
-count is above the normal threshold. The threshold and the scrollbar start point
-are configurable in the mod settings and apply immediately without restarting
+summary. The storage-box button can include item types already stored in the
+selected stockpile or shelf; those rows are highlighted with a grey background.
+The expand/collapse button can show the list even when the selected count is
+above the normal threshold. The threshold and the scrollbar start point are
+configurable in the mod settings and apply immediately without restarting
 RimWorld.
 
 ## Build

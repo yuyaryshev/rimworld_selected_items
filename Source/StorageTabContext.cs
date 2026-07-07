@@ -6,16 +6,22 @@ namespace SelectedItems
     [HarmonyPatch(typeof(ITab_Storage), "FillTab")]
     public static class StorageTabContext
     {
-        public static bool Active;
+        private static readonly System.Reflection.MethodInfo SelStoreSettingsParentGetter =
+            AccessTools.PropertyGetter(typeof(ITab_Storage), "SelStoreSettingsParent");
 
-        public static void Prefix()
+        public static bool Active;
+        public static IStoreSettingsParent CurrentParent;
+
+        public static void Prefix(ITab_Storage __instance)
         {
             Active = true;
+            CurrentParent = SelStoreSettingsParentGetter?.Invoke(__instance, null) as IStoreSettingsParent;
         }
 
         public static void Finalizer()
         {
             Active = false;
+            CurrentParent = null;
         }
     }
 }

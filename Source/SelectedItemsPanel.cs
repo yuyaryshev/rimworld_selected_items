@@ -26,7 +26,7 @@ namespace SelectedItems
             return HeaderHeight + Padding + visibleRows * RowHeight + Padding;
         }
 
-        public static void Draw(Rect rect, ThingFilter filter, ThingFilter parentFilter, System.Collections.Generic.IEnumerable<ThingDef> forceHiddenDefs, TreeNode_ThingCategory displayRoot, SelectedItemSnapshot snapshot)
+        public static void Draw(Rect rect, ThingFilter filter, ThingFilter parentFilter, System.Collections.Generic.IEnumerable<ThingDef> forceHiddenDefs, TreeNode_ThingCategory displayRoot, System.Collections.Generic.List<ThingDef> storedDefs, SelectedItemSnapshot snapshot)
         {
             if (snapshot == null)
             {
@@ -39,12 +39,26 @@ namespace SelectedItems
             Rect headerRect = new Rect(inner.x, inner.y, inner.width, HeaderHeight);
             Rect toggleRect = new Rect(headerRect.xMax - 24f, headerRect.y, 24f, 24f);
             Rect refreshRect = new Rect(toggleRect.x - 26f, headerRect.y + 1f, 22f, 22f);
-            Rect labelRect = new Rect(headerRect.x, headerRect.y + 2f, refreshRect.x - headerRect.x - 4f, 20f);
+            Rect storedRect = new Rect(refreshRect.x - 26f, headerRect.y + 1f, 22f, 22f);
+            Rect labelRect = new Rect(headerRect.x, headerRect.y + 2f, storedRect.x - headerRect.x - 4f, 20f);
 
             Widgets.Label(labelRect, "Selected items: " + snapshot.TotalSelectedCount);
+            Texture2D storedTex = snapshot.ShowStoredItems ? SelectedItemsTextures.Box : SelectedItemsTextures.BoxOff;
+            if (Widgets.ButtonImage(storedRect, storedTex))
+            {
+                snapshot.ShowStoredItems = !snapshot.ShowStoredItems;
+                if (snapshot.ShowStoredItems && snapshot.TotalStoredCount > snapshot.Limit)
+                {
+                    snapshot.ForceFullList = true;
+                    snapshot.Expanded = true;
+                }
+                StorageFilterSelection.Refresh(snapshot, filter, parentFilter, forceHiddenDefs, displayRoot, storedDefs);
+            }
+            TooltipHandler.TipRegion(storedRect, snapshot.ShowStoredItems ? "Hide items already stored here" : "Show items already stored here");
+
             if (Widgets.ButtonImage(refreshRect, SelectedItemsTextures.Refresh))
             {
-                StorageFilterSelection.Refresh(snapshot, filter, parentFilter, forceHiddenDefs, displayRoot);
+                StorageFilterSelection.Refresh(snapshot, filter, parentFilter, forceHiddenDefs, displayRoot, storedDefs);
             }
             TooltipHandler.TipRegion(refreshRect, "Refresh selected item list");
 
@@ -55,12 +69,12 @@ namespace SelectedItems
                 if (snapshot.Expanded && snapshot.TotalSelectedCount > snapshot.Limit)
                 {
                     snapshot.ForceFullList = true;
-                    StorageFilterSelection.Refresh(snapshot, filter, parentFilter, forceHiddenDefs, displayRoot);
+                    StorageFilterSelection.Refresh(snapshot, filter, parentFilter, forceHiddenDefs, displayRoot, storedDefs);
                 }
                 if (!snapshot.Expanded)
                 {
                     snapshot.ForceFullList = false;
-                    StorageFilterSelection.Refresh(snapshot, filter, parentFilter, forceHiddenDefs, displayRoot);
+                    StorageFilterSelection.Refresh(snapshot, filter, parentFilter, forceHiddenDefs, displayRoot, storedDefs);
                 }
             }
             TooltipHandler.TipRegion(toggleRect, snapshot.Expanded ? "Hide selected item list" : "Show selected item list");
@@ -98,7 +112,12 @@ namespace SelectedItems
                 Rect iconRect = new Rect(rowRect.x + 2f, rowRect.y + 2f, 20f, 20f);
                 Rect labelRect = new Rect(iconRect.xMax + 4f, rowRect.y + 2f, rowRect.width - 54f, 20f);
                 Rect checkRect = new Rect(rowRect.xMax - 24f, rowRect.y, 24f, 24f);
+                bool storedHere = snapshot.StoredDefs.Contains(def);
 
+                if (storedHere)
+                {
+                    Widgets.DrawBoxSolid(rowRect, new Color(0.45f, 0.45f, 0.45f, 0.22f));
+                }
                 if (Mouse.IsOver(rowRect))
                 {
                     Widgets.DrawHighlight(rowRect);
