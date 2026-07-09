@@ -24,7 +24,7 @@ namespace SelectedItems
             List<ThingDef> suppressSmallVolumeTags = null,
             Map map = null)
         {
-            if (!StorageTabContext.Active)
+            if (!SelectedItemsMod.RuntimeEnabled() || !StorageTabContext.Active)
             {
                 return true;
             }

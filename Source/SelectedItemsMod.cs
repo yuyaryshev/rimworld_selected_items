@@ -29,6 +29,12 @@ namespace SelectedItems
             Listing_Standard listing = new Listing_Standard();
             listing.Begin(inRect);
 
+            bool disableModRuntime = Settings.DisableModRuntime;
+            listing.CheckboxLabeled("Disable Mod Runtime", ref disableModRuntime, "Disable all Selected Items runtime UI changes without unloading the mod.");
+            Settings.DisableModRuntime = disableModRuntime;
+
+            listing.GapLine();
+
             int selectedLimit = Settings.SelectedLimit;
             listing.TextFieldNumericLabeled("Show selected list when selected item count is at most", ref selectedLimit, ref selectedLimitBuffer, 1f, 1000f);
             Settings.SelectedLimit = Mathf.Clamp(selectedLimit, 1, 1000);
@@ -42,6 +48,11 @@ namespace SelectedItems
 
             listing.End();
             Settings.Write();
+        }
+
+        public static bool RuntimeEnabled()
+        {
+            return Settings == null || !Settings.DisableModRuntime;
         }
     }
 }

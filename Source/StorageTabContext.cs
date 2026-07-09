@@ -14,6 +14,13 @@ namespace SelectedItems
 
         public static void Prefix(ITab_Storage __instance)
         {
+            if (!SelectedItemsMod.RuntimeEnabled())
+            {
+                Active = false;
+                CurrentParent = null;
+                return;
+            }
+
             Active = true;
             CurrentParent = SelStoreSettingsParentGetter?.Invoke(__instance, null) as IStoreSettingsParent;
         }
