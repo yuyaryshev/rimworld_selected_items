@@ -13,6 +13,7 @@ namespace SelectedItems
         public bool ForceFullList;
         public bool NeedsRefreshOnFirstExpand;
         public bool ShowStoredItems;
+        public bool SelectedCountTruncated;
         public int Limit;
         public int TotalSelectedCount;
         public int TotalStoredCount;

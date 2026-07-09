@@ -16,10 +16,18 @@ namespace SelectedItems
             limit = Clamp(limit, 1, 1000);
             int maxItems = limit * 2;
             int frame = UnityEngine.Time.frameCount;
-            List<ThingDef> allowedVisible = AllowedVisibleDefs(filter, parentFilter, forceHiddenDefs, displayRoot);
+            bool hasSnapshot = Snapshots.TryGetValue(filter, out SelectedItemSnapshot snapshot);
+            if (hasSnapshot && frame - snapshot.LastFrame <= ReopenFrameGap && snapshot.Limit == limit && (snapshot.SelectedCountTruncated || snapshot.ForceFullList))
+            {
+                snapshot.LastFrame = frame;
+                return snapshot;
+            }
+
+            int scanLimit = hasSnapshot && snapshot.ForceFullList ? int.MaxValue : maxItems;
+            List<ThingDef> allowedVisible = AllowedVisibleDefs(filter, parentFilter, forceHiddenDefs, displayRoot, scanLimit, out bool selectedTruncated);
             storedDefs = VisibleStoredDefs(storedDefs, parentFilter, forceHiddenDefs, displayRoot);
 
-            if (!Snapshots.TryGetValue(filter, out SelectedItemSnapshot snapshot) || frame - snapshot.LastFrame > ReopenFrameGap || snapshot.Limit != limit)
+            if (!hasSnapshot || frame - snapshot.LastFrame > ReopenFrameGap || snapshot.Limit != limit)
             {
                 Snapshots.Remove(filter);
                 snapshot = new SelectedItemSnapshot
@@ -30,6 +38,7 @@ namespace SelectedItems
                     Limit = limit,
                     TotalSelectedCount = allowedVisible.Count,
                     TotalStoredCount = storedDefs.Count,
+                    SelectedCountTruncated = selectedTruncated,
                     LastFrame = frame
                 };
                 RefreshItems(snapshot, allowedVisible, storedDefs, maxItems);
@@ -40,6 +49,7 @@ namespace SelectedItems
             snapshot.LastFrame = frame;
             snapshot.TotalSelectedCount = allowedVisible.Count;
             snapshot.TotalStoredCount = storedDefs.Count;
+            snapshot.SelectedCountTruncated = selectedTruncated;
             snapshot.StoredDefs.Clear();
             foreach (ThingDef storedDef in storedDefs)
             {
@@ -66,10 +76,12 @@ namespace SelectedItems
             int limit = SelectedItemsMod.Settings?.SelectedLimit ?? 5;
             limit = Clamp(limit, 1, 1000);
             int maxItems = limit * 2;
-            List<ThingDef> allowedVisible = AllowedVisibleDefs(filter, parentFilter, forceHiddenDefs, displayRoot);
+            int scanLimit = snapshot.ForceFullList ? int.MaxValue : maxItems;
+            List<ThingDef> allowedVisible = AllowedVisibleDefs(filter, parentFilter, forceHiddenDefs, displayRoot, scanLimit, out bool selectedTruncated);
             storedDefs = VisibleStoredDefs(storedDefs, parentFilter, forceHiddenDefs, displayRoot);
             snapshot.TotalSelectedCount = allowedVisible.Count;
             snapshot.TotalStoredCount = storedDefs.Count;
+            snapshot.SelectedCountTruncated = selectedTruncated;
             snapshot.Limit = limit;
             RefreshItems(snapshot, allowedVisible, snapshot.ShowStoredItems ? storedDefs : null, maxItems);
         }
@@ -97,12 +109,24 @@ namespace SelectedItems
             }
         }
 
-        private static List<ThingDef> AllowedVisibleDefs(ThingFilter filter, ThingFilter parentFilter, IEnumerable<ThingDef> forceHiddenDefs, TreeNode_ThingCategory displayRoot)
+        private static List<ThingDef> AllowedVisibleDefs(ThingFilter filter, ThingFilter parentFilter, IEnumerable<ThingDef> forceHiddenDefs, TreeNode_ThingCategory displayRoot, int maxItems, out bool truncated)
         {
-            return filter.AllowedThingDefs
-                .Where(def => Visible(def, parentFilter, forceHiddenDefs, displayRoot))
-                .OrderBy(def => def.label)
-                .ToList();
+            truncated = false;
+            List<ThingDef> result = new List<ThingDef>();
+            foreach (ThingDef def in filter.AllowedThingDefs)
+            {
+                if (!Visible(def, parentFilter, forceHiddenDefs, displayRoot))
+                {
+                    continue;
+                }
+                if (result.Count >= maxItems)
+                {
+                    truncated = true;
+                    break;
+                }
+                result.Add(def);
+            }
+            return result.OrderBy(def => def.label).ToList();
         }
 
         private static List<ThingDef> VisibleStoredDefs(List<ThingDef> storedDefs, ThingFilter parentFilter, IEnumerable<ThingDef> forceHiddenDefs, TreeNode_ThingCategory displayRoot)

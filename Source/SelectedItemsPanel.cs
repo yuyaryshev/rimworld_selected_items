@@ -42,7 +42,12 @@ namespace SelectedItems
             Rect storedRect = new Rect(refreshRect.x - 26f, headerRect.y + 1f, 22f, 22f);
             Rect labelRect = new Rect(headerRect.x, headerRect.y + 2f, storedRect.x - headerRect.x - 4f, 20f);
 
-            Widgets.Label(labelRect, "Selected items: " + snapshot.TotalSelectedCount);
+            string selectedLabel = "Selected items: " + snapshot.TotalSelectedCount;
+            if (snapshot.SelectedCountTruncated)
+            {
+                selectedLabel += "+ click refresh";
+            }
+            Widgets.Label(labelRect, selectedLabel);
             Texture2D storedTex = snapshot.ShowStoredItems ? SelectedItemsTextures.Box : SelectedItemsTextures.BoxOff;
             if (Widgets.ButtonImage(storedRect, storedTex))
             {
@@ -58,6 +63,7 @@ namespace SelectedItems
 
             if (Widgets.ButtonImage(refreshRect, SelectedItemsTextures.Refresh))
             {
+                snapshot.ForceFullList = true;
                 StorageFilterSelection.Refresh(snapshot, filter, parentFilter, forceHiddenDefs, displayRoot, storedDefs);
             }
             TooltipHandler.TipRegion(refreshRect, "Refresh selected item list");
@@ -68,7 +74,6 @@ namespace SelectedItems
                 snapshot.Expanded = !snapshot.Expanded;
                 if (snapshot.Expanded && (snapshot.TotalSelectedCount > snapshot.Limit || snapshot.NeedsRefreshOnFirstExpand))
                 {
-                    snapshot.ForceFullList = true;
                     snapshot.NeedsRefreshOnFirstExpand = false;
                     StorageFilterSelection.Refresh(snapshot, filter, parentFilter, forceHiddenDefs, displayRoot, storedDefs);
                 }
