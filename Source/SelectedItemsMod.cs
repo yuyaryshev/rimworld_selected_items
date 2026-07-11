@@ -35,6 +35,16 @@ namespace SelectedItems
 
             listing.GapLine();
 
+            bool openStorageTabOnSelect = Settings.OpenStorageTabOnSelect;
+            listing.CheckboxLabeled("Open Storage tab when selecting storage", ref openStorageTabOnSelect, "When selecting a stockpile, shelf, or storage container, open its Storage tab once. Manual tab changes are not forced afterward.");
+            Settings.OpenStorageTabOnSelect = openStorageTabOnSelect;
+
+            bool addStockpileSwitchArrows = Settings.AddStockpileSwitchArrows;
+            listing.CheckboxLabeled("Add arrows to switch nearest stockpiles", ref addStockpileSwitchArrows, "Show edge arrows in the Selected Items panel when another matching stockpile or shelf is within 3 cells.");
+            Settings.AddStockpileSwitchArrows = addStockpileSwitchArrows;
+
+            listing.GapLine();
+
             int selectedLimit = Settings.SelectedLimit;
             listing.TextFieldNumericLabeled("Show selected list when selected item count is at most", ref selectedLimit, ref selectedLimitBuffer, 1f, 1000f);
             Settings.SelectedLimit = Mathf.Clamp(selectedLimit, 1, 1000);

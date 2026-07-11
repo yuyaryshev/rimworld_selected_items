@@ -5,12 +5,16 @@ namespace SelectedItems
     public class SelectedItemsSettings : ModSettings
     {
         public bool DisableModRuntime;
+        public bool OpenStorageTabOnSelect = true;
+        public bool AddStockpileSwitchArrows = true;
         public int SelectedLimit = 5;
         public int ScrollStartsAt = 5;
 
         public override void ExposeData()
         {
             Scribe_Values.Look(ref DisableModRuntime, "disableModRuntime", false);
+            Scribe_Values.Look(ref OpenStorageTabOnSelect, "openStorageTabOnSelect", true);
+            Scribe_Values.Look(ref AddStockpileSwitchArrows, "addStockpileSwitchArrows", true);
             Scribe_Values.Look(ref SelectedLimit, "selectedLimit", 5);
             Scribe_Values.Look(ref ScrollStartsAt, "scrollStartsAt", 5);
             SelectedLimit = Clamp(SelectedLimit, 1, 1000);

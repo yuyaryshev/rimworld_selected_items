@@ -17,6 +17,10 @@ above the normal threshold. The threshold and the scrollbar start point are
 configurable in the mod settings and apply immediately without restarting
 RimWorld.
 
+Optional settings can also open the Storage tab when selecting storage and add
+edge arrows for switching to a matching nearby stockpile or shelf within three
+cells.
+
 ## Build
 
 ```powershell

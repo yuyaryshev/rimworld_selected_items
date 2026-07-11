@@ -9,6 +9,12 @@ namespace SelectedItems
     {
         private const int ReopenFrameGap = 30;
         private static readonly ConditionalWeakTable<ThingFilter, SelectedItemSnapshot> Snapshots = new ConditionalWeakTable<ThingFilter, SelectedItemSnapshot>();
+        private static bool expandNextSnapshot;
+
+        public static void ExpandNextSnapshot()
+        {
+            expandNextSnapshot = true;
+        }
 
         public static SelectedItemSnapshot SnapshotFor(ThingFilter filter, ThingFilter parentFilter, IEnumerable<ThingDef> forceHiddenDefs, TreeNode_ThingCategory displayRoot, List<ThingDef> storedDefs)
         {
@@ -16,9 +22,15 @@ namespace SelectedItems
             limit = Clamp(limit, 1, 1000);
             int maxItems = limit * 2;
             int frame = UnityEngine.Time.frameCount;
+            bool forceExpanded = expandNextSnapshot;
+            expandNextSnapshot = false;
             bool hasSnapshot = Snapshots.TryGetValue(filter, out SelectedItemSnapshot snapshot);
             if (hasSnapshot && frame - snapshot.LastFrame <= ReopenFrameGap && snapshot.Limit == limit && (snapshot.SelectedCountTruncated || snapshot.ForceFullList))
             {
+                if (forceExpanded)
+                {
+                    snapshot.Expanded = true;
+                }
                 snapshot.LastFrame = frame;
                 return snapshot;
             }
@@ -32,7 +44,7 @@ namespace SelectedItems
                 Snapshots.Remove(filter);
                 snapshot = new SelectedItemSnapshot
                 {
-                    Expanded = allowedVisible.Count <= limit,
+                    Expanded = forceExpanded || allowedVisible.Count <= limit,
                     NeedsRefreshOnFirstExpand = allowedVisible.Count > limit,
                     ShowStoredItems = storedDefs.Count <= limit,
                     Limit = limit,
@@ -47,6 +59,10 @@ namespace SelectedItems
             }
 
             snapshot.LastFrame = frame;
+            if (forceExpanded)
+            {
+                snapshot.Expanded = true;
+            }
             snapshot.TotalSelectedCount = allowedVisible.Count;
             snapshot.TotalStoredCount = storedDefs.Count;
             snapshot.SelectedCountTruncated = selectedTruncated;

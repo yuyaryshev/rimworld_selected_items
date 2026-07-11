@@ -8,6 +8,7 @@ namespace SelectedItems
         private const float RowHeight = 24f;
         private const float HeaderHeight = 24f;
         private const float Padding = 3f;
+        private const float ArrowButtonSize = 22f;
 
         public static float HeightFor(SelectedItemSnapshot snapshot)
         {
@@ -15,15 +16,25 @@ namespace SelectedItems
             {
                 return 0f;
             }
+
+            float minHeight = HeaderHeight + Padding * 2f;
+            if (snapshot.Expanded &&
+                SelectedItemsMod.Settings?.AddStockpileSwitchArrows == true &&
+                (StorageNavigation.TryFindNeighbor(StorageNavigation.Direction.Up, out _) ||
+                 StorageNavigation.TryFindNeighbor(StorageNavigation.Direction.Down, out _)))
+            {
+                minHeight = ArrowButtonSize * 3f + Padding * 4f;
+            }
+
             if (!snapshot.Expanded || snapshot.Items.Count == 0)
             {
-                return HeaderHeight + Padding * 2f;
+                return minHeight;
             }
 
             int scrollStartsAt = SelectedItemsMod.Settings?.ScrollStartsAt ?? 5;
             scrollStartsAt = Mathf.Clamp(scrollStartsAt, 1, 2000);
             int visibleRows = snapshot.Items.Count > scrollStartsAt ? scrollStartsAt : snapshot.Items.Count;
-            return HeaderHeight + Padding + visibleRows * RowHeight + Padding;
+            return Mathf.Max(minHeight, HeaderHeight + Padding + visibleRows * RowHeight + Padding);
         }
 
         public static void Draw(Rect rect, ThingFilter filter, ThingFilter parentFilter, System.Collections.Generic.IEnumerable<ThingDef> forceHiddenDefs, TreeNode_ThingCategory displayRoot, System.Collections.Generic.List<ThingDef> storedDefs, SelectedItemSnapshot snapshot)
@@ -35,6 +46,11 @@ namespace SelectedItems
 
             Widgets.DrawMenuSection(rect);
             Rect inner = rect.ContractedBy(Padding);
+            if (snapshot.Expanded && SelectedItemsMod.Settings?.AddStockpileSwitchArrows == true)
+            {
+                DrawSwitchArrows(rect, ref inner);
+            }
+
             Text.Font = GameFont.Tiny;
             Rect headerRect = new Rect(inner.x, inner.y, inner.width, HeaderHeight);
             Rect toggleRect = new Rect(headerRect.xMax - 24f, headerRect.y, 24f, 24f);
@@ -105,6 +121,67 @@ namespace SelectedItems
             {
                 DrawRows(rowsRect, filter, snapshot);
             }
+        }
+
+        private static void DrawSwitchArrows(Rect rect, ref Rect inner)
+        {
+            bool left = StorageNavigation.TryFindNeighbor(StorageNavigation.Direction.Left, out _);
+            bool right = StorageNavigation.TryFindNeighbor(StorageNavigation.Direction.Right, out _);
+            bool up = StorageNavigation.TryFindNeighbor(StorageNavigation.Direction.Up, out _);
+            bool down = StorageNavigation.TryFindNeighbor(StorageNavigation.Direction.Down, out _);
+            bool useLeftRail = left || (!right && (up || down));
+            bool useRightRail = right || (!left && !useLeftRail && (up || down));
+
+            if (useLeftRail)
+            {
+                inner.xMin += ArrowButtonSize + Padding;
+            }
+            if (useRightRail)
+            {
+                inner.xMax -= ArrowButtonSize + Padding;
+            }
+
+            float leftRailX = rect.x + Padding;
+            float rightRailX = rect.xMax - Padding - ArrowButtonSize;
+            if (left)
+            {
+                DrawArrowButton(new Rect(leftRailX, rect.center.y - ArrowButtonSize / 2f, ArrowButtonSize, ArrowButtonSize), "<", StorageNavigation.Direction.Left);
+            }
+            if (right)
+            {
+                DrawArrowButton(new Rect(rightRailX, rect.center.y - ArrowButtonSize / 2f, ArrowButtonSize, ArrowButtonSize), ">", StorageNavigation.Direction.Right);
+            }
+            if (up)
+            {
+                if (useLeftRail)
+                {
+                    DrawArrowButton(new Rect(leftRailX, rect.y + Padding, ArrowButtonSize, ArrowButtonSize), "^", StorageNavigation.Direction.Up);
+                }
+                if (useRightRail)
+                {
+                    DrawArrowButton(new Rect(rightRailX, rect.y + Padding, ArrowButtonSize, ArrowButtonSize), "^", StorageNavigation.Direction.Up);
+                }
+            }
+            if (down)
+            {
+                if (useLeftRail)
+                {
+                    DrawArrowButton(new Rect(leftRailX, rect.yMax - Padding - ArrowButtonSize, ArrowButtonSize, ArrowButtonSize), "v", StorageNavigation.Direction.Down);
+                }
+                if (useRightRail)
+                {
+                    DrawArrowButton(new Rect(rightRailX, rect.yMax - Padding - ArrowButtonSize, ArrowButtonSize, ArrowButtonSize), "v", StorageNavigation.Direction.Down);
+                }
+            }
+        }
+
+        private static void DrawArrowButton(Rect rect, string label, StorageNavigation.Direction direction)
+        {
+            if (Widgets.ButtonText(rect, label))
+            {
+                StorageNavigation.SelectNeighbor(direction);
+            }
+            TooltipHandler.TipRegion(rect, "Select nearest matching storage");
         }
 
         private static void DrawRows(Rect rect, ThingFilter filter, SelectedItemSnapshot snapshot)
