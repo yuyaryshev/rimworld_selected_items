@@ -1,4 +1,5 @@
 using UnityEngine;
+using RimWorld;
 using Verse;
 
 namespace SelectedItems
@@ -33,8 +34,9 @@ namespace SelectedItems
 
             int scrollStartsAt = SelectedItemsMod.Settings?.ScrollStartsAt ?? 5;
             scrollStartsAt = Mathf.Clamp(scrollStartsAt, 1, 2000);
-            int visibleRows = snapshot.Items.Count > scrollStartsAt ? scrollStartsAt : snapshot.Items.Count;
-            return Mathf.Max(minHeight, HeaderHeight + Padding + visibleRows * RowHeight + Padding);
+            int visibleRows = snapshot.Rows.Count > scrollStartsAt ? scrollStartsAt : snapshot.Rows.Count;
+            float searchHeight = SearchHeightFor(snapshot);
+            return Mathf.Max(minHeight, HeaderHeight + Padding + visibleRows * RowHeight + searchHeight + Padding);
         }
 
         public static void Draw(Rect rect, ThingFilter filter, ThingFilter parentFilter, System.Collections.Generic.IEnumerable<ThingDef> forceHiddenDefs, TreeNode_ThingCategory displayRoot, System.Collections.Generic.List<ThingDef> storedDefs, SelectedItemSnapshot snapshot)
@@ -73,14 +75,14 @@ namespace SelectedItems
                     snapshot.ForceFullList = true;
                     snapshot.Expanded = true;
                 }
-                StorageFilterSelection.Refresh(snapshot, filter, parentFilter, forceHiddenDefs, displayRoot, storedDefs);
+                StorageFilterSelection.Refresh(snapshot, filter, parentFilter, forceHiddenDefs, displayRoot, storedDefs, null);
             }
             TooltipHandler.TipRegion(storedRect, snapshot.ShowStoredItems ? "Hide items already stored here" : "Show items already stored here");
 
             if (Widgets.ButtonImage(refreshRect, SelectedItemsTextures.Refresh))
             {
                 snapshot.ForceFullList = true;
-                StorageFilterSelection.Refresh(snapshot, filter, parentFilter, forceHiddenDefs, displayRoot, storedDefs);
+                StorageFilterSelection.Refresh(snapshot, filter, parentFilter, forceHiddenDefs, displayRoot, storedDefs, null);
             }
             TooltipHandler.TipRegion(refreshRect, "Refresh selected item list");
 
@@ -91,17 +93,17 @@ namespace SelectedItems
                 if (snapshot.Expanded && (snapshot.TotalSelectedCount > snapshot.Limit || snapshot.NeedsRefreshOnFirstExpand))
                 {
                     snapshot.NeedsRefreshOnFirstExpand = false;
-                    StorageFilterSelection.Refresh(snapshot, filter, parentFilter, forceHiddenDefs, displayRoot, storedDefs);
+                    StorageFilterSelection.Refresh(snapshot, filter, parentFilter, forceHiddenDefs, displayRoot, storedDefs, null);
                 }
                 if (!snapshot.Expanded)
                 {
                     snapshot.ForceFullList = false;
-                    StorageFilterSelection.Refresh(snapshot, filter, parentFilter, forceHiddenDefs, displayRoot, storedDefs);
+                    StorageFilterSelection.Refresh(snapshot, filter, parentFilter, forceHiddenDefs, displayRoot, storedDefs, null);
                 }
             }
             TooltipHandler.TipRegion(toggleRect, snapshot.Expanded ? "Hide selected item list" : "Show selected item list");
 
-            if (!snapshot.Expanded || snapshot.Items.Count == 0)
+            if (!snapshot.Expanded || snapshot.Rows.Count == 0)
             {
                 return;
             }
@@ -109,18 +111,37 @@ namespace SelectedItems
             Rect rowsRect = new Rect(inner.x, inner.y + HeaderHeight, inner.width, inner.height - HeaderHeight);
             int scrollStartsAt = SelectedItemsMod.Settings?.ScrollStartsAt ?? 5;
             scrollStartsAt = Mathf.Clamp(scrollStartsAt, 1, 2000);
-
-            if (snapshot.Items.Count > scrollStartsAt)
+            float searchHeight = SearchHeightFor(snapshot);
+            if (searchHeight > 0f)
             {
-                Rect viewRect = new Rect(0f, 0f, rowsRect.width - 16f, snapshot.Items.Count * RowHeight);
+                rowsRect.height -= searchHeight;
+            }
+
+            if (snapshot.Rows.Count > scrollStartsAt)
+            {
+                Rect viewRect = new Rect(0f, 0f, rowsRect.width - 16f, snapshot.Rows.Count * RowHeight);
                 Widgets.BeginScrollView(rowsRect, ref snapshot.ScrollPosition, viewRect);
-                DrawRows(new Rect(0f, 0f, viewRect.width, viewRect.height), filter, snapshot);
+                DrawRows(new Rect(0f, 0f, viewRect.width, viewRect.height), filter, parentFilter, forceHiddenDefs, displayRoot, storedDefs, snapshot);
                 Widgets.EndScrollView();
             }
             else
             {
-                DrawRows(rowsRect, filter, snapshot);
+                DrawRows(rowsRect, filter, parentFilter, forceHiddenDefs, displayRoot, storedDefs, snapshot);
             }
+
+            if (searchHeight > 0f)
+            {
+                DrawSearchRows(new Rect(rowsRect.x, rowsRect.yMax, rowsRect.width, searchHeight), filter, parentFilter, forceHiddenDefs, displayRoot, storedDefs, snapshot);
+            }
+        }
+
+        private static float SearchHeightFor(SelectedItemSnapshot snapshot)
+        {
+            if (snapshot == null || !snapshot.Expanded || snapshot.SearchRows.Count == 0)
+            {
+                return 0f;
+            }
+            return Padding + snapshot.SearchRows.Count * RowHeight + (snapshot.SearchResultsTruncated ? RowHeight : 0f);
         }
 
         private static void DrawSwitchArrows(Rect rect, ref Rect inner)
@@ -184,23 +205,65 @@ namespace SelectedItems
             TooltipHandler.TipRegion(rect, "Select nearest matching storage");
         }
 
-        private static void DrawRows(Rect rect, ThingFilter filter, SelectedItemSnapshot snapshot)
+        private static void DrawRows(Rect rect, ThingFilter filter, ThingFilter parentFilter, System.Collections.Generic.IEnumerable<ThingDef> forceHiddenDefs, TreeNode_ThingCategory displayRoot, System.Collections.Generic.List<ThingDef> storedDefs, SelectedItemSnapshot snapshot)
         {
             Text.Font = GameFont.Small;
-            for (int i = 0; i < snapshot.Items.Count; i++)
+            for (int i = 0; i < snapshot.Rows.Count; i++)
             {
-                ThingDef def = snapshot.Items[i];
+                SelectedItemRow row = snapshot.Rows[i];
                 float y = rect.y + i * RowHeight;
-                Rect rowRect = new Rect(rect.x, y, rect.width, RowHeight);
-                Rect iconRect = new Rect(rowRect.x + 2f, rowRect.y + 2f, 20f, 20f);
-                Rect labelRect = new Rect(iconRect.xMax + 4f, rowRect.y + 2f, rowRect.width - 54f, 20f);
-                Rect checkRect = new Rect(rowRect.xMax - 24f, rowRect.y, 24f, 24f);
-                bool storedHere = snapshot.StoredDefs.Contains(def);
+                DrawRow(new Rect(rect.x, y, rect.width, RowHeight), filter, parentFilter, forceHiddenDefs, displayRoot, storedDefs, snapshot, row);
+            }
+        }
 
-                if (storedHere)
+        private static void DrawSearchRows(Rect rect, ThingFilter filter, ThingFilter parentFilter, System.Collections.Generic.IEnumerable<ThingDef> forceHiddenDefs, TreeNode_ThingCategory displayRoot, System.Collections.Generic.List<ThingDef> storedDefs, SelectedItemSnapshot snapshot)
+        {
+            Text.Font = GameFont.Tiny;
+            float y = rect.y + Padding;
+            for (int i = 0; i < snapshot.SearchRows.Count; i++)
+            {
+                DrawRow(new Rect(rect.x, y, rect.width, RowHeight), filter, parentFilter, forceHiddenDefs, displayRoot, storedDefs, snapshot, snapshot.SearchRows[i]);
+                y += RowHeight;
+            }
+            if (snapshot.SearchResultsTruncated)
+            {
+                Widgets.Label(new Rect(rect.x + 26f, y + 2f, rect.width - 26f, 20f), "And there are more...");
+            }
+        }
+
+        private static void DrawRow(Rect rowRect, ThingFilter filter, ThingFilter parentFilter, System.Collections.Generic.IEnumerable<ThingDef> forceHiddenDefs, TreeNode_ThingCategory displayRoot, System.Collections.Generic.List<ThingDef> storedDefs, SelectedItemSnapshot snapshot, SelectedItemRow row)
+        {
+            Text.Font = GameFont.Small;
+            if (row == null)
+            {
+                return;
+            }
+
+            if (row.IsCategory)
+            {
+                DrawCategoryRow(rowRect, filter, parentFilter, forceHiddenDefs, displayRoot, storedDefs, snapshot, row);
+                return;
+            }
+
+            ThingDef def = row.ThingDef;
+            if (def == null)
+            {
+                return;
+            }
+
+            Rect iconRect = new Rect(rowRect.x + 2f, rowRect.y + 2f, 20f, 20f);
+            Rect checkRect = new Rect(rowRect.xMax - 24f, rowRect.y, 24f, 24f);
+            bool precisionControls = row.HasPrecisionControls;
+            Rect labelRect = new Rect(iconRect.xMax + 4f, rowRect.y + 2f, rowRect.width - (precisionControls ? 142f : 54f), 20f);
+
+            if (row.StoredHere)
                 {
                     Widgets.DrawBoxSolid(rowRect, new Color(0.45f, 0.45f, 0.45f, 0.22f));
                 }
+            if (row.SearchResult)
+            {
+                Widgets.DrawBoxSolid(rowRect, new Color(0.25f, 0.35f, 0.45f, 0.16f));
+            }
                 if (Mouse.IsOver(rowRect))
                 {
                     Widgets.DrawHighlight(rowRect);
@@ -210,17 +273,54 @@ namespace SelectedItems
                     Widgets.DefIcon(iconRect, def, null, 1f, null, drawPlaceholder: true);
                 }
 
-                Widgets.Label(labelRect, def.LabelCap);
-                TooltipHandler.TipRegion(rowRect, def.DescriptionDetailed);
+            Widgets.Label(labelRect, def.LabelCap);
+            TooltipHandler.TipRegion(rowRect, def.DescriptionDetailed);
 
-                bool allowed = filter.Allows(def);
+            if (!precisionControls)
+            {
+                bool allowed = row.Allowed;
                 bool changed = allowed;
                 Widgets.Checkbox(checkRect.position, ref changed, 24f, disabled: false, paintable: true);
                 if (changed != allowed)
                 {
                     filter.SetAllow(def, changed);
+                    row.Allowed = changed;
                 }
             }
+            else
+            {
+                PrecisionStockpileControlBridge.DrawThingDefControls(rowRect, checkRect, def);
+            }
+            PrecisionStockpileControlBridge.OpenThingDefContextMenu(rowRect, def);
+        }
+
+        private static void DrawCategoryRow(Rect rowRect, ThingFilter filter, ThingFilter parentFilter, System.Collections.Generic.IEnumerable<ThingDef> forceHiddenDefs, TreeNode_ThingCategory displayRoot, System.Collections.Generic.List<ThingDef> storedDefs, SelectedItemSnapshot snapshot, SelectedItemRow row)
+        {
+            Rect labelRect = new Rect(rowRect.x + 4f, rowRect.y + 2f, rowRect.width - 34f, 20f);
+            Rect checkRect = new Rect(rowRect.xMax - 24f, rowRect.y, 24f, 24f);
+            if (Mouse.IsOver(rowRect))
+            {
+                Widgets.DrawHighlight(rowRect);
+            }
+
+            Widgets.Label(labelRect, row.Label);
+            TooltipHandler.TipRegion(rowRect, row.Description);
+            bool precisionControls = row.HasPrecisionControls;
+            if (!precisionControls)
+            {
+                MultiCheckboxState state = row.Allowed ? MultiCheckboxState.On : MultiCheckboxState.Off;
+                MultiCheckboxState changed = Widgets.CheckboxMulti(checkRect, state, paintable: true);
+                if (changed != state)
+                {
+                    filter.SetAllow(row.CategoryDef, changed == MultiCheckboxState.On);
+                    row.Allowed = changed == MultiCheckboxState.On;
+                }
+            }
+            else
+            {
+                PrecisionStockpileControlBridge.DrawCategoryControls(rowRect, checkRect, row.CategoryDef);
+            }
+            PrecisionStockpileControlBridge.OpenCategoryContextMenu(rowRect, row.CategoryDef);
         }
     }
 }
